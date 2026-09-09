@@ -54,19 +54,27 @@ export function describe(component: Component): Row {
   return { kind: "other" };
 }
 
-export function summaryText(summary: Summary): string {
-  const items = [summary.working ? "Working" : "Worked"];
-  if (summary.durationMs !== undefined) items[0] += ` for ${formatDuration(summary.durationMs)}`;
-  items.push(`${summary.tools} tool${summary.tools === 1 ? "" : "s"}`, `${summary.messages} msg${summary.messages === 1 ? "" : "s"}`);
-  if (summary.tokens !== undefined) items.push(`${formatTokens(summary.tokens)} tokens`);
+export function summaryText(summary: Summary, theme?: Theme): string {
+  const fg = (color: Parameters<Theme["fg"]>[0], text: string) => theme ? theme.fg(color, text) : text;
+  const diff = (added: number, removed: number) => {
+    if (!theme) return formatDiff(added, removed);
+    return [
+      added || !removed ? fg("toolDiffAdded", `+${added}`) : "",
+      removed ? fg("toolDiffRemoved", `−${removed}`) : "",
+    ].filter(Boolean).join(" ");
+  };
+  let label = summary.working ? "Working" : "Worked";
+  if (summary.durationMs !== undefined) label += ` for ${formatDuration(summary.durationMs)}`;
+  const items = [fg("muted", label), fg("muted", `${summary.tools} tool${summary.tools === 1 ? "" : "s"}`), fg("muted", `${summary.messages} msg${summary.messages === 1 ? "" : "s"}`)];
+  if (summary.tokens !== undefined) items.push(fg("muted", `${formatTokens(summary.tokens)} tokens`));
   if (summary.files.length) {
     const added = summary.files.reduce((total, file) => total + file.added, 0);
     const removed = summary.files.reduce((total, file) => total + file.removed, 0);
-    items.push(`${summary.files.length} file${summary.files.length === 1 ? "" : "s"} ${formatDiff(added, removed)}`);
+    items.push(`${fg("muted", `${summary.files.length} file${summary.files.length === 1 ? "" : "s"}`)} ${diff(added, removed)}`);
   }
-  if (summary.failures) items.push(`${summary.failures} failed`);
-  const files = summary.files.map((file) => `  ${displayPath(file.path)} ${formatDiff(file.added, file.removed)}`);
-  return [`▶ ${items.join(" · ")}`, ...files].join("\n");
+  if (summary.failures) items.push(fg("warning", `${summary.failures} failed`));
+  const files = summary.files.map((file) => `  ${fg("toolDiffContext", displayPath(file.path))} ${diff(file.added, file.removed)}`);
+  return [`${fg("muted", "▶ ")}${items.join(fg("muted", " · "))}`, ...files].join("\n");
 }
 
 function messageKey(message: { role: string; timestamp?: number; toolCallId?: string; content?: unknown }): string {
@@ -115,8 +123,8 @@ export function attachTranscript(
     container.children.forEach((component, index) => {
       const summary = projection.summaries.get(index);
       if (summary) {
-        const text = summaryText(summary).split("\n").map((line) => truncateToWidth(line, Math.max(1, width))).join("\n");
-        view.addChild(new Text(`\n${state.theme.fg(summary.failures ? "warning" : "muted", text)}`, 0, 0));
+        const text = summaryText(summary, state.theme).split("\n").map((line) => truncateToWidth(line, Math.max(1, width))).join("\n");
+        view.addChild(new Text(`\n${text}`, 0, 0));
       }
       if (projection.hidden.has(index)) return;
       if (component instanceof AssistantMessageComponent && index !== projection.currentAssistant) {
