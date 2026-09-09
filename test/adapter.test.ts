@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { AssistantMessageComponent, initTheme, ToolExecutionComponent, UserMessageComponent, type Theme } from "@earendil-works/pi-coding-agent";
+import { AssistantMessageComponent, initTheme, ToolExecutionComponent, UserMessageComponent, type Theme, type SessionEntry } from "@earendil-works/pi-coding-agent";
 import { Container, Text, type TUI } from "@earendil-works/pi-tui";
 import { attachTranscript, describe, findTranscript, supportedVersion } from "../src/adapter.ts";
 import type { Mode } from "../src/policy.ts";
@@ -43,10 +43,9 @@ test("native transcript components survive folding, streaming updates, expansion
   const detach = attachTranscript(chat, () => ({ mode, active, theme }));
   try {
     const folded = chat.render(100).join("\n");
-    assert.match(folded, /2 earlier tool calls/);
-    assert.doesNotMatch(folded, /TOOL_0|TOOL_1/);
-    assert.match(folded, /TOOL_2/);
-    assert.match(folded, /TOOL_4/);
+    assert.match(folded, /5 tools/);
+    assert.doesNotMatch(folded, /TOOL_/);
+    assert.match(folded, /Thinking/);
     assert.equal(chat.children, originalChildren);
     mode = "regular";
     assert.deepEqual(chat.render(100), nativeRegular);
@@ -61,7 +60,7 @@ test("native transcript components survive folding, streaming updates, expansion
     chat.addChild(final);
     active = false;
     const settled = chat.render(100).join("\n");
-    assert.match(settled, /5 tool calls/);
+    assert.match(settled, /5 tools/);
     assert.match(settled, /1 failed/);
     assert.match(settled, /All files checked/);
     assert.doesNotMatch(settled, /TOOL_|Checking the files/);
@@ -91,9 +90,12 @@ test("only the mounted transcript folds; unrelated containers keep stock renderi
 test("a streaming final response stays open until it actually settles", () => {
   const component = new AssistantMessageComponent(message("Answer", "stop"));
   component.updateContent(message("Answer", "stop")!, true);
-  assert.deepEqual(describe(component), { kind: "assistant", terminal: false, visible: true });
+  assert.equal(describe(component).kind, "assistant");
+  assert.equal(Reflect.get(describe(component), "terminal"), false);
+  assert.equal(Reflect.get(describe(component), "streaming"), true);
   component.updateContent(message("Answer", "stop")!, false);
-  assert.deepEqual(describe(component), { kind: "assistant", terminal: true, visible: true });
+  assert.equal(Reflect.get(describe(component), "terminal"), true);
+  assert.equal(Reflect.get(describe(component), "streaming"), false);
 });
 
 test("narrow terminals, custom notices, and repeated attach/detach remain safe", () => {
@@ -106,6 +108,28 @@ test("narrow terminals, custom notices, and repeated attach/detach remain safe",
     detach();
     detach();
   }
+});
+
+test("replaying history restores duration and edit summaries from the existing session messages", () => {
+  const chat = new Container();
+  const first = { ...message("Checking files")!, timestamp: 1000, usage: { ...message("")!.usage, input: 1000, output: 100 } };
+  const final = { ...message("Finished", "stop")!, timestamp: 700000, usage: { ...message("")!.usage, input: 5500, output: 500 } };
+  chat.addChild(new AssistantMessageComponent(first));
+  const edit = new ToolExecutionComponent("edit", "edit-1", { path: "/tmp/example.txt" }, {}, undefined, ui, process.cwd());
+  edit.updateResult({ content: [], isError: false, details: { patch: "--- a\n+++ b\n@@ -1 +1,2 @@\n-old\n+new\n+extra\n" } });
+  chat.addChild(edit);
+  chat.addChild(new AssistantMessageComponent(final));
+  const entries = [first, final].map((message, index) => ({
+    type: "message", id: String(index), parentId: null, message,
+    timestamp: new Date(index ? 721000 : 2000).toISOString(),
+  })) as SessionEntry[];
+  const detach = attachTranscript(chat, () => ({ mode: "folded", active: false, theme, entries }));
+  try {
+    const output = chat.render(120).join("\n");
+    assert.match(output, /Worked for 12m · 1 tool · 2 msgs · \+5k tokens · 1 file \+2 −1/);
+    assert.match(output, /\/tmp\/example.txt \+2 −1/);
+    assert.equal(entries.length, 2, "rendering never appends bookkeeping to the session");
+  } finally { detach(); }
 });
 
 test("an untested Pi version cannot silently patch a changed private layout", () => {

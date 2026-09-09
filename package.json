@@ -1,14 +1,31 @@
 {
   "name": "pi-tool-fold",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Three inline transcript views for Pi: folded, regular, and fully expanded.",
   "type": "module",
   "license": "MIT",
   "author": "Chaskin Saroff",
-  "repository": { "type": "git", "url": "https://github.com/csaroff/pi-tool-fold.git" },
-  "keywords": ["pi-package", "pi-extension", "tools", "folding"],
-  "files": ["index.ts", "src", "README.md", "LICENSE"],
-  "pi": { "extensions": ["./index.ts"] },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/csaroff/pi-tool-fold.git"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "tools",
+    "folding"
+  ],
+  "files": [
+    "index.ts",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
   "scripts": {
     "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit",

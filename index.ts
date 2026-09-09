@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { CustomEditor, getAgentDir, VERSION, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { matchesKey, type TUI } from "@earendil-works/pi-tui";
 import { attachTranscript, findTranscript, supportedVersion } from "./src/adapter.ts";
-import { isMode, nextMode, type Mode } from "./src/policy.ts";
+import { isMode, modeLabel, nextMode, type Mode } from "./src/policy.ts";
 import { loadMode, saveMode } from "./src/settings.ts";
 
 export default function toolFold(pi: ExtensionAPI) {
@@ -13,11 +13,13 @@ export default function toolFold(pi: ExtensionAPI) {
   let restore: (() => void) | undefined;
   let available = false;
   let live = false;
+  let clock: ReturnType<typeof setInterval> | undefined;
+  function stopClock() { clearInterval(clock); clock = undefined; }
 
   function refresh() {
     if (!context || !live) return;
     context.ui.setToolsExpanded(mode === "expanded");
-    context.ui.setStatus("pi-tool-fold", `tools: ${mode}`);
+    context.ui.setStatus("pi-tool-fold", `tools: ${modeLabel(mode)}`);
     tui?.requestRender();
   }
 
@@ -52,7 +54,7 @@ export default function toolFold(pi: ExtensionAPI) {
       const originalExpanded = ctx.ui.getToolsExpanded();
       if (mode === "folded" && !available) mode = "regular";
       const detach = transcript ? attachTranscript(transcript, () => ({
-        mode, active: !ctx.isIdle(), theme: ctx.ui.theme,
+        mode, active: !ctx.isIdle(), theme: ctx.ui.theme, entries: ctx.sessionManager?.getBranch(),
       })) : undefined;
       if (transcript) ui.setClearOnShrink(true);
       const handleInput = editor.handleInput;
@@ -65,6 +67,7 @@ export default function toolFold(pi: ExtensionAPI) {
       editor.handleInput = input;
       restore = () => {
         live = false;
+        stopClock();
         detach?.();
         if (editor.handleInput === input) editor.handleInput = handleInput;
         ui.setClearOnShrink(originalClear);
@@ -81,20 +84,27 @@ export default function toolFold(pi: ExtensionAPI) {
 
   // The normal renderer owns streaming updates. Settlement also needs a frame
   // when the final event is an interruption rather than a new assistant message.
-  pi.on("agent_end", () => { tui?.requestRender(); });
+  pi.on("agent_start", () => {
+    stopClock();
+    if (!live) return;
+    clock = setInterval(() => { if (mode === "folded") tui?.requestRender(); }, 1000);
+    clock.unref();
+    tui?.requestRender();
+  });
+  pi.on("agent_end", () => { stopClock(); tui?.requestRender(); });
   pi.on("session_shutdown", () => { restore?.(); restore = undefined; });
 
   pi.registerCommand("tool-fold", {
-    description: "Inline tool view: folded | regular | expanded | status",
-    getArgumentCompletions: (prefix) => ["folded", "regular", "expanded", "status"]
+    description: "Inline tool view: collapsed | regular | expanded | status",
+    getArgumentCompletions: (prefix) => ["collapsed", "regular", "expanded", "status"]
       .filter((value) => value.startsWith(prefix)).map((value) => ({ value, label: value })),
     handler: async (args, ctx) => {
       if (ctx.mode !== "tui") return;
-      const value = args.trim();
+      const value = args.trim() === "collapsed" ? "folded" : args.trim();
       if (!value || value === "status") {
-        ctx.ui.notify(`Tools: ${mode}. Ctrl+O expands; Ctrl+Shift+O folds. /tool-fold folded|regular|expanded`, "info");
+        ctx.ui.notify(`Tools: ${modeLabel(mode)}. Ctrl+O expands; Ctrl+Shift+O folds. /tool-fold collapsed|regular|expanded`, "info");
       } else if (isMode(value)) select(value);
-      else ctx.ui.notify("Usage: /tool-fold folded|regular|expanded|status", "warning");
+      else ctx.ui.notify("Usage: /tool-fold collapsed|regular|expanded|status", "warning");
     },
   });
 }

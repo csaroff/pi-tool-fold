@@ -56,7 +56,7 @@ test("editor shortcuts expand in place, preserve drafts, remember selection, and
   try {
     toolFold(pi);
     await emit("session_start");
-    assert.equal(status, "tools: folded");
+    assert.equal(status, "tools: collapsed");
     assert.equal(clearOnShrink, true);
     editor!.handleInput!("\x0f");
     assert.equal(status, "tools: regular");
@@ -71,9 +71,9 @@ test("editor shortcuts expand in place, preserve drafts, remember selection, and
     editor!.handleInput!("\x1b[111;6u");
     assert.equal(status, "tools: regular");
     editor!.handleInput!("\x1b[111;6u");
-    assert.equal(status, "tools: folded");
+    assert.equal(status, "tools: collapsed");
     editor!.handleInput!("\x1b[111;6u");
-    assert.equal(status, "tools: folded");
+    assert.equal(status, "tools: collapsed");
     editor!.handleInput!("ordinary input");
     assert.deepEqual(passedThrough, ["ordinary input"]);
 
