@@ -132,6 +132,24 @@ test("replaying history restores duration and edit summaries from the existing s
   } finally { detach(); }
 });
 
+test("collapsed edit summaries retain readable filenames and red/green diff counts", () => {
+  // Muting the whole summary also mutes the file list, making additions and
+  // deletions indistinguishable. Each semantic segment needs its own theme color.
+  const chat = new Container();
+  const edit = new ToolExecutionComponent("edit", "colored-edit", { path: "/tmp/colors.ts" }, {}, undefined, ui, process.cwd());
+  edit.updateResult({ content: [], isError: false, details: { patch: "--- a\n+++ b\n@@ -1 +1,2 @@\n-old\n+new\n+extra\n" } });
+  chat.addChild(edit);
+  const colored = { fg: (color: string, text: string) => `<${color}>${text}</${color}>` } as Theme;
+  const detach = attachTranscript(chat, () => ({ mode: "folded", active: false, theme: colored }));
+  try {
+    const lines = chat.render(500).join("\n");
+    assert.match(lines, /<toolDiffContext>\/tmp\/colors.ts<\/toolDiffContext>/);
+    assert.equal(lines.match(/<toolDiffAdded>\+2<\/toolDiffAdded>/g)?.length, 2, "color totals and per-file additions");
+    assert.equal(lines.match(/<toolDiffRemoved>−1<\/toolDiffRemoved>/g)?.length, 2, "color totals and per-file deletions");
+    assert.doesNotMatch(lines, /<muted>[^\n]*\/tmp\/colors.ts/);
+  } finally { detach(); }
+});
+
 test("an untested Pi version cannot silently patch a changed private layout", () => {
   assert.equal(supportedVersion("0.85.1"), true);
   for (const version of ["0.84.3", "0.85.2", "0.86.0", "0.85.1-beta.1"]) {
