@@ -50,13 +50,11 @@ export default function toolFold(pi: ExtensionAPI) {
       const editor = previous?.(ui, theme, keys) ?? new CustomEditor(ui, theme, keys, { embedWorkingStatus: true });
       const transcript = supportedVersion(VERSION) ? findTranscript(ui) : undefined;
       available = !!transcript;
-      const originalClear = ui.getClearOnShrink();
       const originalExpanded = ctx.ui.getToolsExpanded();
       if (mode === "folded" && !available) mode = "regular";
       const detach = transcript ? attachTranscript(transcript, () => ({
         mode, active: !ctx.isIdle(), theme: ctx.ui.theme, entries: ctx.sessionManager?.getBranch(),
       })) : undefined;
-      if (transcript) ui.setClearOnShrink(true);
       const handleInput = editor.handleInput;
       const input = (data: string) => {
         // Intercept only in the editor: tree filters and dialogs keep their keys.
@@ -70,7 +68,6 @@ export default function toolFold(pi: ExtensionAPI) {
         stopClock();
         detach?.();
         if (editor.handleInput === input) editor.handleInput = handleInput;
-        ui.setClearOnShrink(originalClear);
         ctx.ui.setToolsExpanded(originalExpanded);
         ctx.ui.setStatus("pi-tool-fold", undefined);
         if (ctx.ui.getEditorComponent() === factory) ctx.ui.setEditorComponent(previous);

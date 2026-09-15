@@ -74,7 +74,7 @@ First launch starts collapsed. Explicit view changes are saved to `~/.pi/agent/p
 - **Tokens:** estimated context growth from the first request's input to the latest completed response's input + output, including cached tokens. This is **not** total billed tokens or a sum of repeated inputs. It excludes the initial prompt, appears only once usage is available, and restarts at compaction boundaries.
 - **Files:** successful `edit` results, grouped by normalized path. Additions/deletions accumulate across edits; they are not the final net git diff. Failed edits are excluded. Bash and `write` changes are not tracked yet.
 
-Pi has no public whole-transcript folding API. A small version-checked adapter in `src/adapter.ts` patches **one mounted transcript container's render method**, reads native component metadata, and preserves mouse hit-testing. It does not patch global prototypes, tools, session/context builders, or picker renderers. Teardown restores the container, editor hook, and clear-on-shrink setting.
+Pi has no public whole-transcript folding API. A small version-checked adapter in `src/adapter.ts` patches **one mounted transcript container's render method**, reads native component metadata, and preserves mouse hit-testing. It does not patch global prototypes, tools, session/context builders, or picker renderers. Teardown restores the container and editor hook.
 
 The editor wrapper composes with an already-installed custom editor. An extension that subsequently replaces the editor without composing can take over these shortcuts.
 
