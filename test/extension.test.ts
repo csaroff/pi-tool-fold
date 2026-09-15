@@ -7,7 +7,7 @@ import { Container } from "@earendil-works/pi-tui";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import toolFold from "../index.ts";
 
-test("editor shortcuts expand in place, preserve drafts, remember selection, and detach on reload", async () => {
+test("collapsed mode preserves scrollback while the agent works, plus editor state across view changes", async () => {
   const directory = mkdtempSync(join(tmpdir(), "pi-tool-fold-ui-"));
   const previousDir = process.env.PI_CODING_AGENT_DIR;
   process.env.PI_CODING_AGENT_DIR = directory;
@@ -57,7 +57,9 @@ test("editor shortcuts expand in place, preserve drafts, remember selection, and
     toolFold(pi);
     await emit("session_start");
     assert.equal(status, "tools: collapsed");
-    assert.equal(clearOnShrink, true);
+    // Live tool settlement repeatedly shrinks the folded transcript. Enabling Pi's
+    // clear-on-shrink path would erase the terminal scrollback each time.
+    assert.equal(clearOnShrink, false);
     editor!.handleInput!("\x0f");
     assert.equal(status, "tools: regular");
     assert.equal(expanded, false);
