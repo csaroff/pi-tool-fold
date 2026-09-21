@@ -12,9 +12,10 @@ test("inspect a busy run without leaving the conversation, then return to a quie
   const rows: Row[] = [user, assistant(), ...Array.from({ length: 5 }, () => tool()), assistant(false, true, true)];
   const before = structuredClone(rows);
   const folded = project(rows, "folded", true);
-  assert.deepEqual(folded.hidden, new Set([1, 2, 3, 4, 5, 6]));
+  assert.deepEqual(folded.hidden, new Set([2, 3, 4, 5, 6]));
   assert.equal(folded.currentAssistant, 7);
-  assert.equal(folded.summaries.get(1)?.tools, 5);
+  assert.equal(folded.summaries.get(2)?.tools, 5);
+  assert.equal(folded.summaries.size, 1, "live prose does not add an empty summary after completed work");
 
   let mode = nextMode("folded", 1);
   assert.equal(mode, "regular");
@@ -28,8 +29,8 @@ test("inspect a busy run without leaving the conversation, then return to a quie
 
   rows.push(assistant(true));
   const settled = project(rows, "folded", false);
-  assert.deepEqual(settled.hidden, new Set([1, 2, 3, 4, 5, 6, 7]));
-  assert.equal(settled.hidden.has(8), false, "the final response stays visible");
+  assert.deepEqual(settled.hidden, new Set([2, 3, 4, 5, 6]));
+  for (const index of [1, 7, 8]) assert.equal(settled.hidden.has(index), false, "all prose stays visible");
 });
 
 test("a new run does not reopen tools from a completed run", () => {
@@ -50,7 +51,7 @@ test("an interrupted tool run preserves its last partial response and counts fai
   const result = project(rows, "folded", false);
   assert.equal(result.hidden.has(1), false);
   assert.equal(result.hidden.has(2), true);
-  assert.equal(result.summaries.get(1)?.failures, 1);
+  assert.equal(result.summaries.get(2)?.failures, 1);
 });
 
 test("an empty final tool-call message does not replace a readable partial response", () => {
@@ -69,12 +70,12 @@ test("folding stops at the folded endpoint", () => {
 
 test("parallel tools show only the newest running call, then fall back to the remaining one", () => {
   const rows: Row[] = [user, assistant(), tool("bash", false, true), tool("read", false, true)];
-  assert.deepEqual(project(rows, "folded", true).hidden, new Set([1, 2]));
+  assert.deepEqual(project(rows, "folded", true).hidden, new Set([2]));
   rows[3] = tool("read");
-  assert.deepEqual(project(rows, "folded", true).hidden, new Set([1, 3]));
+  assert.deepEqual(project(rows, "folded", true).hidden, new Set([3]));
   rows[2] = tool("bash");
   const waiting = project(rows, "folded", true);
-  assert.deepEqual(waiting.hidden, new Set([1, 2, 3]));
+  assert.deepEqual(waiting.hidden, new Set([2, 3]));
   assert.equal(waiting.thinking, true);
 });
 

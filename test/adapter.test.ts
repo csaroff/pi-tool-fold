@@ -63,7 +63,8 @@ test("native transcript components survive folding, streaming updates, expansion
     assert.match(settled, /5 tools/);
     assert.match(settled, /1 failed/);
     assert.match(settled, /All files checked/);
-    assert.doesNotMatch(settled, /TOOL_|Checking the files/);
+    assert.match(settled, /Checking the files/);
+    assert.doesNotMatch(settled, /TOOL_/);
     mode = "regular";
     assert.match(chat.render(100).join("\n"), /A hidden result updated/);
     mode = "folded";
@@ -126,7 +127,7 @@ test("replaying history restores duration and edit summaries from the existing s
   const detach = attachTranscript(chat, () => ({ mode: "folded", active: false, theme, entries }));
   try {
     const output = chat.render(120).join("\n");
-    assert.match(output, /Worked for 12m · 1 tool · 2 msgs · \+5k tokens · 1 file \+2 −1/);
+    assert.match(output, /Worked for 12m · 1 tool · 1 msg · \+5k tokens · 1 file \+2 −1/);
     assert.match(output, /\/tmp\/example.txt \+2 −1/);
     assert.equal(entries.length, 2, "rendering never appends bookkeeping to the session");
   } finally { detach(); }

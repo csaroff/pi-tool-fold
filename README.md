@@ -11,21 +11,27 @@ Shortcuts stop at either end; they never wrap around. Your draft stays untouched
 
 | View | Behavior |
 | --- | --- |
-| **Collapsed** | Show only current activity: the running tool, live response, or thinking. Completed activity becomes a work summary; the final response stays visible without its thinking trace. |
+| **Collapsed** | Show current activity and all user-facing response text. Hidden tool/reasoning blocks become work summaries between prose messages; settled thinking stays hidden. |
 | **Regular** | Stock Pi tool calls with their normal output previews. |
 | **Expanded** | Stock Pi's fully expanded tool output. |
 
-Example collapsed summary:
+Example collapsed timeline:
 
 ```text
-▶ Worked for 12m · 32 tools · 31 msgs · +5k tokens · 2 files +5 −4
+I'll inspect the configuration.
+
+▶ Worked for 12m · 32 tools · 1 msg · +5k tokens · 2 files +5 −4
   ~/project/src/index.ts +3 −3
   ~/project/README.md +2 −1
+
+The configuration is valid. I'll check the logs next.
+
+▶ Worked for 8s · 2 tools · 1 msg
 
 The final response appears here.
 ```
 
-While working, the summary says **Working for…** and updates every second. Thinking stays visible: Pi's **Thinking…** label when traces are hidden, or the full live trace when enabled. Before any tokens arrive, a **Thinking…** placeholder keeps the view from looking stuck. Completed tool calls and old thinking disappear immediately; unfolding restores them.
+While working, the latest summary says **Working for…** and updates every second. Thinking stays visible: Pi's **Thinking…** label when traces are hidden, or the full live trace when enabled. Before any tokens arrive, a **Thinking…** placeholder keeps the view from looking stuck. Completed tool calls and old thinking disappear immediately; unfolding restores them. Prose emitted before tool calls remains visible as a text-only message, preserving the model's narrative without its settled thinking trace.
 
 Failed calls are counted in the summary. Interrupted runs keep their last readable partial response or native error message. User prompts, custom notices, and compaction rows remain visible.
 
@@ -64,14 +70,14 @@ First launch starts collapsed. Explicit view changes are saved to `~/.pi/agent/p
 - Both native views render the original components. Hidden tools continue receiving updates and reappear immediately when unfolded, including mid-response.
 - Pi's compaction behavior is unchanged. Expanding restores the native transcript that Pi loaded, not history already omitted by compaction.
 - Both regular and fullscreen terminal modes are supported. Shrinking the transcript can briefly redraw the screen.
-- Collapsed history groups activity at user prompts, terminal responses, and compaction/branch boundaries. With parallel tools, only the newest still-running tool is shown.
+- Collapsed history groups activity at user prompts, readable assistant messages, terminal responses, and compaction/branch boundaries. With parallel tools, only the newest still-running tool is shown.
 - This is not a transcript virtualization layer. It retains all native components, prioritizing reversible views over lower memory use in very long sessions.
 
 ### Summary numbers
 
-- **Duration:** from the first response's request timestamp to the last recorded completion (or now while running). Historical completion times come from session entries. Unknown timing is omitted.
-- **Tools / msgs:** tool calls and assistant messages, respectively, including the final response. Tool results and user prompts are not counted as assistant messages.
-- **Tokens:** estimated context growth from the first request's input to the latest completed response's input + output, including cached tokens. This is **not** total billed tokens or a sum of repeated inputs. It excludes the initial prompt, appears only once usage is available, and restarts at compaction boundaries.
+- **Duration:** for each activity block, from its first response's request timestamp to the next prose response's recorded completion (or now while running). Historical completion times come from session entries. Unknown timing is omitted.
+- **Tools / msgs:** tool calls and assistant messages within that activity block. The prose message that closes the block is shown after its summary and is not counted again. Tool results and user prompts are not assistant messages.
+- **Tokens:** estimated context growth across the activity block, from its first request's input to the closing response's input + output, including cached tokens. This is **not** total billed tokens or a sum of repeated inputs. It excludes the initial prompt and appears only when usage is available.
 - **Files:** successful `edit` results, grouped by normalized path. Additions/deletions accumulate across edits; they are not the final net git diff. Failed edits are excluded. Bash and `write` changes are not tracked yet.
 
 Pi has no public whole-transcript folding API. A small version-checked adapter in `src/adapter.ts` patches **one mounted transcript container's render method**, reads native component metadata, and preserves mouse hit-testing. It does not patch global prototypes, tools, session/context builders, or picker renderers. Teardown restores the container and editor hook.
