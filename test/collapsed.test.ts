@@ -15,6 +15,34 @@ function assistant(thinking: string, text = "", stopReason = "toolUse") {
   } as ConstructorParameters<typeof AssistantMessageComponent>[0];
 }
 
+test("interleaved prose remains a readable timeline with work summarized between messages", () => {
+  // Some models explain what they learned before making their next tool call.
+  // Collapsing implementation detail must not turn those separate updates into
+  // one apparent final message or hide context that the final answer relies on.
+  const chat = new Container();
+  const prose = ["FIRST_UPDATE", "SECOND_UPDATE", "FINAL_ANSWER"];
+  chat.addChild(new AssistantMessageComponent(assistant("SECRET_THINKING_1", prose[0])));
+  for (let index = 0; index < 2; index++) {
+    const tool = new ToolExecutionComponent("read", `interleaved-${index}`, { path: `HIDDEN_TOOL_${index}` }, {}, undefined, ui, process.cwd());
+    tool.markExecutionStarted();
+    tool.updateResult({ content: [{ type: "text", text: `HIDDEN_RESULT_${index}` }], isError: false });
+    chat.addChild(tool);
+    chat.addChild(new AssistantMessageComponent(assistant(`SECRET_THINKING_${index + 2}`, prose[index + 1], index === 1 ? "stop" : "toolUse")));
+  }
+
+  const detach = attachTranscript(chat, () => ({ mode: "folded", active: false, theme }));
+  try {
+    const output = chat.render(100).join("\n");
+    const summaries = [...output.matchAll(/▶ Worked/g)].map((match) => match.index!);
+    assert.equal(summaries.length, 2, "each hidden tool block gets its own summary");
+    assert.ok(output.indexOf(prose[0]) < summaries[0]);
+    assert.ok(summaries[0] < output.indexOf(prose[1]));
+    assert.ok(output.indexOf(prose[1]) < summaries[1]);
+    assert.ok(summaries[1] < output.indexOf(prose[2]));
+    assert.doesNotMatch(output, /HIDDEN_TOOL_|HIDDEN_RESULT_|SECRET_THINKING_/);
+  } finally { detach(); }
+});
+
 test("a collapsed run shows current thinking, not three completed tools or stale thinking", () => {
   // A quiet view must still prove the model is alive. In particular, starting the
   // next response with no tokens yet must replace stale tool output with Thinking.
