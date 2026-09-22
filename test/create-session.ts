@@ -17,7 +17,9 @@ const base = {
 };
 for (let index = 0; index < 5; index++) {
   const name = index === 4 ? "edit" : "bash";
-  const args = index === 4 ? { path: "/tmp/example.txt", edits: [{ oldText: "old", newText: "new\nextra" }] } : { command: `echo TOOL_${index}` };
+  const args: { [key: string]: string | Array<{ [key: string]: string }> } = index === 4
+    ? { path: "/tmp/example.txt", edits: [{ oldText: "old", newText: "new\nextra" }] }
+    : { command: `echo TOOL_${index}` };
   session.appendMessage({ ...base, timestamp: startedAt + index * 60000, stopReason: "toolUse", content: [
     { type: "thinking", thinking: `THINKING_${index}: deciding which file to inspect.` },
     { type: "text", text: `Checking file ${index}.` },

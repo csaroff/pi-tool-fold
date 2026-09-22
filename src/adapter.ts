@@ -15,7 +15,7 @@ import { displayPath, editStat, formatDiff, formatDuration, formatTokens } from 
 // The document layout and component fields below are private Pi integration points.
 // Keep the compatibility check narrow until the adapter tests cover another release.
 export function supportedVersion(version: string): boolean {
-  return version === "0.85.1";
+  return version === "0.85.1" || version === "0.87.0";
 }
 
 export function describe(component: Component): Row {

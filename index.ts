@@ -75,7 +75,7 @@ export default function toolFold(pi: ExtensionAPI) {
       return editor;
     };
     ctx.ui.setEditorComponent(factory);
-    if (!available) ctx.ui.notify(`pi-tool-fold: folding adapter requires Pi 0.85.1's transcript layout (running ${VERSION}). Using native views.`, "warning");
+    if (!available) ctx.ui.notify(`pi-tool-fold: folding adapter has not verified Pi ${VERSION}'s transcript layout. Using native views.`, "warning");
     refresh();
   });
 
