@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { AssistantMessageComponent, initTheme, ToolExecutionComponent, UserMessageComponent, type Theme, type SessionEntry } from "@earendil-works/pi-coding-agent";
 import { Container, Text, type TUI } from "@earendil-works/pi-tui";
-import { attachTranscript, describe, findTranscript, supportedVersion } from "../src/adapter.ts";
+import { attachTranscript, describe, findCompatibleTranscript, findTranscript, supportedVersion } from "../src/adapter.ts";
 import type { Mode } from "../src/policy.ts";
 import { withBuiltInRenderers } from "../node_modules/@earendil-works/pi-coding-agent/dist/core/tools/renderers/index.js";
 
@@ -149,6 +149,17 @@ test("collapsed edit summaries retain readable filenames and red/green diff coun
     assert.equal(lines.match(/<toolDiffRemoved>−1<\/toolDiffRemoved>/g)?.length, 2, "color totals and per-file deletions");
     assert.doesNotMatch(lines, /<muted>[^\n]*\/tmp\/colors.ts/);
   } finally { detach(); }
+});
+
+test("a Pi upgrade keeps folding when its runtime transcript contract still works", () => {
+  // A new Pi version should not discard collapsed mode just because its number
+  // changed. Check actual rendering and component behavior instead.
+  const { chat } = fixture();
+  const document = new Container();
+  document.children = [new Container(), new Container(), chat];
+  assert.equal(findCompatibleTranscript({ children: [document] } as unknown as TUI), chat);
+  document.children = [new Container(), chat];
+  assert.equal(findCompatibleTranscript({ children: [document] } as unknown as TUI), undefined);
 });
 
 test("a Pi patch release with the same transcript layout keeps the user's collapsed view", () => {
