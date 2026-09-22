@@ -151,13 +151,15 @@ test("collapsed edit summaries retain readable filenames and red/green diff coun
   } finally { detach(); }
 });
 
-test("a Pi patch with the verified transcript layout keeps collapsed mode available", () => {
-  // Pi 0.87.0 retained the document → header/resources/transcript structure and
-  // component internals that the adapter uses. Upgrading Pi must not silently
-  // replace the user's collapsed view with native rendering.
-  assert.equal(supportedVersion("0.85.1"), true);
+test("a Pi patch release with the same transcript layout keeps the user's collapsed view", () => {
+  // A patch-only update from 0.87.0 to 0.87.1 did not change the transcript
+  // container or component internals. Falling back to native views after that
+  // update loses the user's saved collapsed view on every new session.
   assert.equal(supportedVersion("0.87.0"), true);
-  for (const version of ["0.84.3", "0.85.2", "0.86.0", "0.86.1", "0.85.1-beta.1", "0.87.1"]) {
+  assert.equal(supportedVersion("0.87.1"), true);
+  assert.equal(supportedVersion("0.87.2"), true);
+  assert.equal(supportedVersion("0.85.1"), true);
+  for (const version of ["0.84.3", "0.85.2", "0.86.0", "0.86.1", "0.85.1-beta.1", "0.87.1-beta.1", "0.88.0"]) {
     assert.equal(supportedVersion(version), false);
   }
 });
