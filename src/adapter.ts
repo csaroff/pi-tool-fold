@@ -13,9 +13,10 @@ import { project, type Mode, type Row, type Summary } from "./policy.ts";
 import { displayPath, editStat, formatDiff, formatDuration, formatTokens } from "./stats.ts";
 
 // The document layout and component fields below are private Pi integration points.
-// Keep the compatibility check narrow until the adapter tests cover another release.
+// The 0.87.0 and 0.87.1 implementations are identical at these integration points;
+// allow patch releases in that line, but require a new review for minor upgrades.
 export function supportedVersion(version: string): boolean {
-  return version === "0.85.1" || version === "0.87.0";
+  return version === "0.85.1" || /^0\.87\.\d+$/.test(version);
 }
 
 export function describe(component: Component): Row {

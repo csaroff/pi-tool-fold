@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { Container } from "@earendil-works/pi-tui";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { VERSION, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import toolFold from "../index.ts";
 
 test("collapsed mode preserves scrollback while the agent works, plus editor state across view changes", async () => {
@@ -37,6 +37,7 @@ test("collapsed mode preserves scrollback while the agent works, plus editor sta
   let editor: ReturnType<Factory>;
   let expanded = false;
   let status: string | undefined;
+  const notices: string[] = [];
   const ctx = {
     mode: "tui", isIdle: () => true,
     ui: {
@@ -49,14 +50,16 @@ test("collapsed mode preserves scrollback while the agent works, plus editor sta
       getToolsExpanded: () => expanded,
       setToolsExpanded: (value: boolean) => { expanded = value; },
       setStatus: (_key: string, value: string | undefined) => { status = value; },
-      notify() {},
+      notify(message: string) { notices.push(message); },
     },
   } as unknown as ExtensionContext;
   const emit = (name: string) => handlers.get(name)?.({}, ctx);
   try {
     toolFold(pi);
     await emit("session_start");
+    assert.equal(VERSION, "0.87.1", "exercise the patch release that lost folding");
     assert.equal(status, "tools: collapsed");
+    assert.deepEqual(notices, [], "a compatible patch release must not warn or discard the saved view");
     // Live tool settlement repeatedly shrinks the folded transcript. Enabling Pi's
     // clear-on-shrink path would erase the terminal scrollback each time.
     assert.equal(clearOnShrink, false);

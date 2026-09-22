@@ -37,7 +37,7 @@ Failed calls are counted in the summary. Interrupted runs keep their last readab
 
 ## Install
 
-**Requires Pi 0.85.1 or 0.87.0 for collapsed mode.** Other versions fall back to regular/expanded views with a warning rather than patch an untested layout.
+**Requires Pi 0.85.1 or a 0.87.x patch release for collapsed mode.** Other versions fall back to regular/expanded views with a warning rather than patch a different minor-version layout. The adapter also checks the mounted transcript's structure before attaching.
 
 ```bash
 pi install git:github.com/csaroff/pi-tool-fold
