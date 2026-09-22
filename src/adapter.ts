@@ -12,13 +12,6 @@ import { Container, Text, truncateToWidth, type Component, type TUI } from "@ear
 import { project, type Mode, type Row, type Summary } from "./policy.ts";
 import { displayPath, editStat, formatDiff, formatDuration, formatTokens } from "./stats.ts";
 
-// The document layout and component fields below are private Pi integration points.
-// The 0.87.0 and 0.87.1 implementations are identical at these integration points;
-// allow patch releases in that line, but require a new review for minor upgrades.
-export function supportedVersion(version: string): boolean {
-  return version === "0.85.1" || /^0\.87\.\d+$/.test(version);
-}
-
 export function describe(component: Component): Row {
   if (component instanceof UserMessageComponent || component instanceof SkillInvocationMessageComponent) {
     return { kind: "user" };
@@ -89,6 +82,50 @@ export function findTranscript(tui: TUI): Container | undefined {
   if (!(document instanceof Container) || document.children.length !== 3) return undefined;
   const transcript = document.children[2];
   return transcript instanceof Container && transcript.constructor === Container ? transcript : undefined;
+}
+
+/** Check Pi's private transcript contract at startup instead of guessing from its version. */
+export function findCompatibleTranscript(tui: TUI, theme: Theme): Container | undefined {
+  const transcript = findTranscript(tui);
+  if (!transcript) return undefined;
+  try {
+    const assistantFields = ["lastMessage", "isStreaming", "markdownTheme", "outputPad", "markdownTransformers"];
+    const toolFields = ["toolName", "toolCallId", "args", "cwd", "executionStarted", "isPartial", "result"];
+    const fieldsPresent = (component: Component, fields: string[]) => fields.every((field) => Reflect.has(component, field));
+    for (const component of transcript.children) {
+      if (component instanceof AssistantMessageComponent && !fieldsPresent(component, assistantFields)) return undefined;
+      if (component instanceof ToolExecutionComponent && !fieldsPresent(component, toolFields)) return undefined;
+    }
+
+    const message = {
+      role: "assistant", content: [{ type: "text", text: "Fold probe response" }], timestamp: 1,
+      stopReason: "stop", api: "openai-responses", provider: "probe", model: "probe",
+      usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0, totalTokens: 2,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+    } as ConstructorParameters<typeof AssistantMessageComponent>[0];
+    const assistant = new AssistantMessageComponent(message);
+    const tool = new ToolExecutionComponent("probe", "probe-call", {}, {}, undefined, tui, process.cwd());
+    if (!fieldsPresent(assistant, assistantFields) || !fieldsPresent(tool, toolFields)) return undefined;
+    const assistantRow = describe(assistant);
+    if (assistantRow.kind !== "assistant" || assistantRow.terminal !== true) return undefined;
+    tool.updateResult({ content: [{ type: "text", text: "Fold probe output" }], isError: true });
+    const toolRow = describe(tool);
+    if (toolRow.kind !== "tool" || toolRow.name !== "probe" || !toolRow.failed) return undefined;
+
+    const sample = new Container();
+    sample.addChild(tool);
+    sample.addChild(assistant);
+    const native = sample.render(80);
+    const detach = attachTranscript(sample, () => ({ mode: "folded", active: false, theme }));
+    try {
+      const folded = sample.render(80).join("\n");
+      if (!folded.includes("Fold probe response") || folded.includes("Fold probe output")) return undefined;
+    } finally { detach(); }
+    if (JSON.stringify(sample.render(80)) !== JSON.stringify(native)) return undefined;
+    return transcript;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Patch only the mounted transcript, never tool prototypes, pickers, or model context. */

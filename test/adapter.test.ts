@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { AssistantMessageComponent, initTheme, ToolExecutionComponent, UserMessageComponent, type Theme, type SessionEntry } from "@earendil-works/pi-coding-agent";
 import { Container, Text, type TUI } from "@earendil-works/pi-tui";
-import { attachTranscript, describe, findCompatibleTranscript, findTranscript, supportedVersion } from "../src/adapter.ts";
+import { attachTranscript, describe, findCompatibleTranscript, findTranscript } from "../src/adapter.ts";
 import type { Mode } from "../src/policy.ts";
 import { withBuiltInRenderers } from "../node_modules/@earendil-works/pi-coding-agent/dist/core/tools/renderers/index.js";
 
@@ -155,22 +155,18 @@ test("a Pi upgrade keeps folding when its runtime transcript contract still work
   // A new Pi version should not discard collapsed mode just because its number
   // changed. Check actual rendering and component behavior instead.
   const { chat } = fixture();
+  chat.addChild(new Text("Extension notice", 0, 0));
   const document = new Container();
   document.children = [new Container(), new Container(), chat];
-  assert.equal(findCompatibleTranscript({ children: [document] } as unknown as TUI), chat);
+  assert.equal(findCompatibleTranscript({ children: [document] } as unknown as TUI, theme), chat);
   document.children = [new Container(), chat];
-  assert.equal(findCompatibleTranscript({ children: [document] } as unknown as TUI), undefined);
+  assert.equal(findCompatibleTranscript({ children: [document] } as unknown as TUI, theme), undefined);
 });
 
-test("a Pi patch release with the same transcript layout keeps the user's collapsed view", () => {
-  // A patch-only update from 0.87.0 to 0.87.1 did not change the transcript
-  // container or component internals. Falling back to native views after that
-  // update loses the user's saved collapsed view on every new session.
-  assert.equal(supportedVersion("0.87.0"), true);
-  assert.equal(supportedVersion("0.87.1"), true);
-  assert.equal(supportedVersion("0.87.2"), true);
-  assert.equal(supportedVersion("0.85.1"), true);
-  for (const version of ["0.84.3", "0.85.2", "0.86.0", "0.86.1", "0.85.1-beta.1", "0.87.1-beta.1", "0.88.0"]) {
-    assert.equal(supportedVersion(version), false);
-  }
+test("an unchanged outer layout cannot mask missing component fields", () => {
+  const { chat, tools } = fixture();
+  const document = new Container();
+  document.children = [new Container(), new Container(), chat];
+  Reflect.deleteProperty(tools[0], "toolName");
+  assert.equal(findCompatibleTranscript({ children: [document] } as unknown as TUI, theme), undefined);
 });

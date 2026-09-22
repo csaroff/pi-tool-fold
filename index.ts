@@ -1,7 +1,7 @@
 import { join } from "node:path";
-import { CustomEditor, getAgentDir, VERSION, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { CustomEditor, getAgentDir, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { matchesKey, type TUI } from "@earendil-works/pi-tui";
-import { attachTranscript, findTranscript, supportedVersion } from "./src/adapter.ts";
+import { attachTranscript, findCompatibleTranscript } from "./src/adapter.ts";
 import { isMode, modeLabel, nextMode, type Mode } from "./src/policy.ts";
 import { loadMode, saveMode } from "./src/settings.ts";
 
@@ -48,7 +48,7 @@ export default function toolFold(pi: ExtensionAPI) {
     const factory: NonNullable<ReturnType<typeof ctx.ui.getEditorComponent>> = (ui, theme, keys) => {
       tui = ui;
       const editor = previous?.(ui, theme, keys) ?? new CustomEditor(ui, theme, keys, { embedWorkingStatus: true });
-      const transcript = supportedVersion(VERSION) ? findTranscript(ui) : undefined;
+      const transcript = findCompatibleTranscript(ui, ctx.ui.theme);
       available = !!transcript;
       const originalExpanded = ctx.ui.getToolsExpanded();
       if (mode === "folded" && !available) mode = "regular";
@@ -75,7 +75,7 @@ export default function toolFold(pi: ExtensionAPI) {
       return editor;
     };
     ctx.ui.setEditorComponent(factory);
-    if (!available) ctx.ui.notify(`pi-tool-fold: folding adapter has not verified Pi ${VERSION}'s transcript layout. Using native views.`, "warning");
+    if (!available) ctx.ui.notify("pi-tool-fold: transcript layout or component behavior is incompatible. Using native views.", "warning");
     refresh();
   });
 

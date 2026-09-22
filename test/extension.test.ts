@@ -4,8 +4,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { Container } from "@earendil-works/pi-tui";
-import { VERSION, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { initTheme, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import toolFold from "../index.ts";
+
+initTheme("dark", false);
 
 test("collapsed mode preserves scrollback while the agent works, plus editor state across view changes", async () => {
   const directory = mkdtempSync(join(tmpdir(), "pi-tool-fold-ui-"));
@@ -23,7 +25,7 @@ test("collapsed mode preserves scrollback while the agent works, plus editor sta
   document.children = [new Container(), new Container(), chat];
   let clearOnShrink = false;
   const tui = {
-    children: [document], requestRender() {},
+    children: [document], requestRender() {}, terminal: { columns: 100, rows: 30 },
     getClearOnShrink: () => clearOnShrink,
     setClearOnShrink: (value: boolean) => { clearOnShrink = value; },
   };
@@ -57,7 +59,6 @@ test("collapsed mode preserves scrollback while the agent works, plus editor sta
   try {
     toolFold(pi);
     await emit("session_start");
-    assert.equal(VERSION, "0.87.1", "exercise the patch release that lost folding");
     assert.equal(status, "tools: collapsed");
     assert.deepEqual(notices, [], "a compatible patch release must not warn or discard the saved view");
     // Live tool settlement repeatedly shrinks the folded transcript. Enabling Pi's

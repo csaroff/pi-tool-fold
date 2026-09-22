@@ -37,7 +37,7 @@ Failed calls are counted in the summary. Interrupted runs keep their last readab
 
 ## Install
 
-**Requires Pi 0.85.1 or a 0.87.x patch release for collapsed mode.** Other versions fall back to regular/expanded views with a warning rather than patch a different minor-version layout. The adapter also checks the mounted transcript's structure before attaching.
+**Collapsed mode is not tied to a Pi version.** At startup the adapter checks the mounted transcript, the component fields it reads, and a small native/folded render. If that probe fails, regular/expanded views remain available with a warning.
 
 ```bash
 pi install git:github.com/csaroff/pi-tool-fold
@@ -80,7 +80,7 @@ First launch starts collapsed. Explicit view changes are saved to `~/.pi/agent/p
 - **Tokens:** estimated context growth across the activity block, from its first request's input to the closing response's input + output, including cached tokens. This is **not** total billed tokens or a sum of repeated inputs. It excludes the initial prompt and appears only when usage is available.
 - **Files:** successful `edit` results, grouped by normalized path. Additions/deletions accumulate across edits; they are not the final net git diff. Failed edits are excluded. Bash and `write` changes are not tracked yet.
 
-Pi has no public whole-transcript folding API. A small version-checked adapter in `src/adapter.ts` patches **one mounted transcript container's render method**, reads native component metadata, and preserves mouse hit-testing. It does not patch global prototypes, tools, session/context builders, or picker renderers. Teardown restores the container and editor hook.
+Pi has no public whole-transcript folding API. A small runtime-checked adapter in `src/adapter.ts` patches **one mounted transcript container's render method**, reads native component metadata, and preserves mouse hit-testing. It does not patch global prototypes, tools, session/context builders, or picker renderers. Teardown restores the container and editor hook.
 
 The editor wrapper composes with an already-installed custom editor. An extension that subsequently replaces the editor without composing can take over these shortcuts.
 
@@ -92,7 +92,7 @@ npm run check
 npm pack --dry-run
 ```
 
-Tests cover reversible folding, current activity and thinking visibility, work summaries, context growth, edit diffstats, failures, interrupted runs, native renderer parity, keyboard endpoints, drafts, persistence, teardown, and unsupported versions.
+Tests cover reversible folding, current activity and thinking visibility, work summaries, context growth, edit diffstats, failures, interrupted runs, native renderer parity, keyboard endpoints, drafts, persistence, teardown, and incompatible layouts/component fields.
 
 For an offline terminal fixture (no provider requests):
 
